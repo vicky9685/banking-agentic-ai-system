@@ -25,6 +25,24 @@ resource "google_artifact_registry_repository" "copilot_repo" {
   docker_config {
     immutable_tags = false
   }
+
+  # Clean up policies to retain only the most recent 3 images to stay strictly inside the GCP Free Tier (5 GB)
+  cleanup_policies {
+    id     = "keep-latest-3"
+    action = "KEEP"
+    most_recent_versions {
+      keep_count = 3
+    }
+  }
+
+  cleanup_policies {
+    id     = "delete-untagged-older-than-14-days"
+    action = "DELETE"
+    condition {
+      tag_state  = "UNTAGGED"
+      older_than = "1209600s" # 14 days in seconds
+    }
+  }
 }
 
 # 2. Google Secret Manager Secret for Gemini API Key
@@ -59,8 +77,8 @@ resource "google_cloud_run_v2_service" "copilot_service" {
     service_account = google_service_account.run_identity.email
 
     scaling {
-      max_instance_count = 5 # Prevent run-away budget costs
-      min_instance_count = 0 # Scale down to 0 when idle to reduce costs
+      max_instance_count = 3 # Tight scaling threshold to strictly respect free tier CPU/memory allocation limits
+      min_instance_count = 0 # Scale down to 0 when idle to guarantee ZERO baseline costs
     }
 
     containers {

@@ -28,6 +28,8 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--min-instances=0'
+      - '--max-instances=3'
       - '--set-secrets=GEMINI_API_KEY=${_SECRET_NAME}:latest'
 
 images:
