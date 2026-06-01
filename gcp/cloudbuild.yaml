@@ -1,0 +1,43 @@
+# Google Cloud Build Pipeline for ApexBank AI Co-Pilot
+steps:
+  # Step 1: Build the container image in Google Cloud
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${COMMIT_SHA}'
+      - '.'
+
+  # Step 2: Push the container image to Google Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${COMMIT_SHA}'
+
+  # Step 3: Deploy the pushed image to GCP Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image'
+      - '${_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${COMMIT_SHA}'
+      - '--region'
+      - '${_LOCATION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--set-secrets=GEMINI_API_KEY=${_SECRET_NAME}:latest'
+
+images:
+  - '${_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${COMMIT_SHA}'
+
+substitutions:
+  _LOCATION: 'us-central1'
+  _REPOSITORY: 'apexbank-repo'
+  _SERVICE_NAME: 'apexbank-copilot'
+  _SECRET_NAME: 'gemini-api-key'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
